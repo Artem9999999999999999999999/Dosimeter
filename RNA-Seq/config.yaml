@@ -1,0 +1,14 @@
+samples:
+  chdfem1: data/samples/CHDfem1_1.fq
+  chdfem2: data/samples/CHDfem2_1.fq
+  chdmale1: data/samples/CHDmale1_1.fq
+  chdmale2: data/samples/CHDmale2_1.fq
+  orefem1: data/samples/OREfem1_1.fq
+  orefem2: data/samples/OREfem2_1.fq
+  oremale1: data/samples/OREmale1_1.fq
+  oremale2: data/samples/OREmale2_1.fq
+
+
+reference:
+  fa-chr: data/reference/dmel-all-chromosome-r6.55.fasta
+  gtf: data/reference/dmel-all-r6.55.gtf

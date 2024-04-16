@@ -1,0 +1,85 @@
+configfile: "config.yaml"
+
+rule all:
+    input:
+        expand("data/trimmed_samples/{sample}_upd_trimmed_1.fq", sample=config['samples'])
+
+rule filter_reads:
+    input:
+        forward="data/trimmed_wo_rrna_samples/{sample}_trimmed_wo_rrna_1.fq",
+        rev="data/trimmed_wo_rrna_samples/{sample}_trimmed_wo_rrna_2.fq"
+    output:
+        forward="data/trimmed_samples/{sample}_upd_trimmed_1.fq",
+        rev="data/trimmed_samples/{sample}_upd_trimmed_2.fq"
+    params:
+        report_html="logs/fastp/html/{sample}.html",
+        report_json="logs/fastp/json/{sample}.json"
+    log:
+        "logs/fastp/{sample}.log"
+    threads: 3
+    shell:
+        "fastp --in1 {input.forward} --in2 {input.rev} --out1 {output.forward} --out2 {output.rev} "
+        "-q 20 -5 -3 --length_required 10 -h {params.report_html} -j {params.report_json} --overrepresentation_analysis "
+        "--dedup "
+
+rule hisat2_build_index:
+    input:
+        fa_chr    = config["reference"]["fa-chr"],
+        fa_transc = config["reference"]["fa-transc"],
+        fa_transp = config["reference"]["fa-transp"],
+        fa_nc     = config["reference"]["fa-nc"]
+    output:
+        chr_index    = expand("data/index_hisat2/genome_index_hisat2/genome-index{ext}", ext=[".1.ht2", ".2.ht2", ".3.ht2", ".4.ht2", ".5.ht2", ".6.ht2", ".7.ht2", ".8.ht2"])
+    params:
+        basename_chr    = "data/index_hisat2/genome_index_hisat2/genome-index"
+    log:
+        log_chr    = "logs/hisat2/build_index/genome-index.log"
+    threads: 6
+    shell:
+        """
+        hisat2-build {input.fa_chr}    {params.basename_chr}    2> {log.log_chr}
+        """
+
+rule hisat2_map:
+    input:
+        "data/trimmed_wo_rrna_samples/{sample}_trimmed_wo_rrna_1.fq",
+        "data/trimmed_wo_rrna_samples/{sample}_trimmed_wo_rrna_2.fq"
+    output:
+        chr    = "mapped_reads_hisat2/chr/sam/{sample}.chr.sam"
+    log:
+        chr    = "logs/hisat2/map/{sample}_map.chr.log"
+    params:
+        basename_chr    = "data/index_hisat2/genome_index_hisat2/genome-index"
+    threads: 6
+    shell:
+        """
+        (hisat2 -x {params.basename_chr}    -1 {input[0]} -2 {input[1]} -S {output.chr}    --threads {threads}) 2> {log.chr}
+        """
+
+rule hisat2_sort:
+    input:
+        chr    = "mapped_reads_hisat2/chr/sam/{sample}.chr.sam"
+    output:
+        chr    = "mapped_reads_hisat2/chr/bam/{sample}.chr.bam"
+    log:
+        chr    = "logs/hisat2/sort/{sample}_sort.chr.log"
+    threads: 3
+    shell:
+        """
+        (samtools view -bS {input.chr}    | samtools sort -o {output.chr})    2> {log.chr}
+        """
+
+rule featureCounts:
+    input:
+        config["reference"]["gtf"]
+    output:
+        chr    = "featureCounts/txt/featureCounts.chd1.rnaseq.chr.txt"
+    log:
+        chr    = "logs/featureCounts/featureCounts.chd1.rnaseq.chr.log"
+    params:
+        chr    = "mapped_reads_hisat2/chr/bam/*bam"
+    threads: 8
+    shell:
+        """
+        (featureCounts -p -s 0 -T 8  -a {input} -o {output.chr}    {params.chr})    2> {log.chr}
+        """

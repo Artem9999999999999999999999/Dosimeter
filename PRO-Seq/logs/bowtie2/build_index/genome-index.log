@@ -1,0 +1,7 @@
+Building a SMALL index
+Renaming data/index_bowtie2/genome_index_bowtie2/genome-index.3.bt2.tmp to data/index_bowtie2/genome_index_bowtie2/genome-index.3.bt2
+Renaming data/index_bowtie2/genome_index_bowtie2/genome-index.4.bt2.tmp to data/index_bowtie2/genome_index_bowtie2/genome-index.4.bt2
+Renaming data/index_bowtie2/genome_index_bowtie2/genome-index.1.bt2.tmp to data/index_bowtie2/genome_index_bowtie2/genome-index.1.bt2
+Renaming data/index_bowtie2/genome_index_bowtie2/genome-index.2.bt2.tmp to data/index_bowtie2/genome_index_bowtie2/genome-index.2.bt2
+Renaming data/index_bowtie2/genome_index_bowtie2/genome-index.rev.1.bt2.tmp to data/index_bowtie2/genome_index_bowtie2/genome-index.rev.1.bt2
+Renaming data/index_bowtie2/genome_index_bowtie2/genome-index.rev.2.bt2.tmp to data/index_bowtie2/genome_index_bowtie2/genome-index.rev.2.bt2

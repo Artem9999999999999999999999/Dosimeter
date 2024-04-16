@@ -1,0 +1,72 @@
+
+        ==========     _____ _    _ ____  _____  ______          _____  
+        =====         / ____| |  | |  _ \|  __ \|  ____|   /\   |  __ \ 
+          =====      | (___ | |  | | |_) | |__) | |__     /  \  | |  | |
+            ====      \___ \| |  | |  _ <|  _  /|  __|   / /\ \ | |  | |
+              ====    ____) | |__| | |_) | | \ \| |____ / ____ \| |__| |
+        ==========   |_____/ \____/|____/|_|  \_\______/_/    \_\_____/
+	  v2.0.6
+
+//========================== featureCounts setting ===========================\\
+||                                                                            ||
+||             Input files : 4 BAM files                                      ||
+||                                                                            ||
+||                           auxin1.chr.notRS.bam                             ||
+||                           auxin2.chr.notRS.bam                             ||
+||                           control1.chr.notRS.bam                           ||
+||                           control2.chr.notRS.bam                           ||
+||                                                                            ||
+||             Output file : featureCounts.chd1.notRS.chr.txt                 ||
+||                 Summary : featureCounts.chd1.notRS.chr.txt.summary         ||
+||              Paired-end : no                                               ||
+||        Count read pairs : no                                               ||
+||              Annotation : dmel-all-r6.55.gtf (GTF)                         ||
+||      Dir for temp files : featureCounts/txt                                ||
+||                                                                            ||
+||                 Threads : 8                                                ||
+||                   Level : meta-feature level                               ||
+||      Multimapping reads : not counted                                      ||
+|| Multi-overlapping reads : not counted                                      ||
+||   Min overlapping bases : 1                                                ||
+||                                                                            ||
+\\============================================================================//
+
+//================================= Running ==================================\\
+||                                                                            ||
+|| Load annotation file dmel-all-r6.55.gtf ...                                ||
+||    Features : 190039                                                       ||
+||    Meta-features : 17610                                                   ||
+||    Chromosomes/contigs : 25                                                ||
+||                                                                            ||
+|| Process BAM file auxin1.chr.notRS.bam...                                   ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 29509089                                             ||
+||    Successfully assigned alignments : 7480296 (25.3%)                      ||
+||    Running time : 0.02 minutes                                             ||
+||                                                                            ||
+|| Process BAM file auxin2.chr.notRS.bam...                                   ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 31741680                                             ||
+||    Successfully assigned alignments : 8021790 (25.3%)                      ||
+||    Running time : 0.03 minutes                                             ||
+||                                                                            ||
+|| Process BAM file control1.chr.notRS.bam...                                 ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 27475442                                             ||
+||    Successfully assigned alignments : 7374288 (26.8%)                      ||
+||    Running time : 0.02 minutes                                             ||
+||                                                                            ||
+|| Process BAM file control2.chr.notRS.bam...                                 ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 29504249                                             ||
+||    Successfully assigned alignments : 7964610 (27.0%)                      ||
+||    Running time : 0.03 minutes                                             ||
+||                                                                            ||
+|| Write the final count table.                                               ||
+|| Write the read assignment summary.                                         ||
+||                                                                            ||
+|| Summary of counting results can be found in file "featureCounts/txt/featu  ||
+|| reCounts.chd1.notRS.chr.txt.summary"                                       ||
+||                                                                            ||
+\\============================================================================//
+

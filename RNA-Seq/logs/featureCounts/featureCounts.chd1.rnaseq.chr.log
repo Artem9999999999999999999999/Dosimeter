@@ -1,0 +1,108 @@
+
+        ==========     _____ _    _ ____  _____  ______          _____  
+        =====         / ____| |  | |  _ \|  __ \|  ____|   /\   |  __ \ 
+          =====      | (___ | |  | | |_) | |__) | |__     /  \  | |  | |
+            ====      \___ \| |  | |  _ <|  _  /|  __|   / /\ \ | |  | |
+              ====    ____) | |__| | |_) | | \ \| |____ / ____ \| |__| |
+        ==========   |_____/ \____/|____/|_|  \_\______/_/    \_\_____/
+	  v2.0.6
+
+//========================== featureCounts setting ===========================\\
+||                                                                            ||
+||             Input files : 8 BAM files                                      ||
+||                                                                            ||
+||                           chdfem1.chr.bam                                  ||
+||                           chdfem2.chr.bam                                  ||
+||                           chdmale1.chr.bam                                 ||
+||                           chdmale2.chr.bam                                 ||
+||                           orefem1.chr.bam                                  ||
+||                           orefem2.chr.bam                                  ||
+||                           oremale1.chr.bam                                 ||
+||                           oremale2.chr.bam                                 ||
+||                                                                            ||
+||             Output file : featureCounts.chd1.rnaseq.chr.txt                ||
+||                 Summary : featureCounts.chd1.rnaseq.chr.txt.summary        ||
+||              Paired-end : yes                                              ||
+||        Count read pairs : no                                               ||
+||              Annotation : dmel-all-r6.55.gtf (GTF)                         ||
+||      Dir for temp files : featureCounts/txt                                ||
+||                                                                            ||
+||                 Threads : 8                                                ||
+||                   Level : meta-feature level                               ||
+||      Multimapping reads : not counted                                      ||
+|| Multi-overlapping reads : not counted                                      ||
+||   Min overlapping bases : 1                                                ||
+||                                                                            ||
+\\============================================================================//
+
+//================================= Running ==================================\\
+||                                                                            ||
+|| Load annotation file dmel-all-r6.55.gtf ...                                ||
+||    Features : 190039                                                       ||
+||    Meta-features : 17610                                                   ||
+||    Chromosomes/contigs : 25                                                ||
+||                                                                            ||
+|| Process BAM file chdfem1.chr.bam...                                        ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 12914687                                             ||
+||    Successfully assigned alignments : 3856258 (29.9%)                      ||
+||    Running time : 0.02 minutes                                             ||
+||                                                                            ||
+|| Process BAM file chdfem2.chr.bam...                                        ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 13298256                                             ||
+||    Successfully assigned alignments : 2409808 (18.1%)                      ||
+||    Running time : 0.02 minutes                                             ||
+||                                                                            ||
+|| Process BAM file chdmale1.chr.bam...                                       ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 21473194                                             ||
+||    Successfully assigned alignments : 6931100 (32.3%)                      ||
+||    Running time : 0.03 minutes                                             ||
+||                                                                            ||
+|| Process BAM file chdmale2.chr.bam...                                       ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 8960112                                              ||
+||    Successfully assigned alignments : 2754899 (30.7%)                      ||
+||    Running time : 0.01 minutes                                             ||
+||                                                                            ||
+|| Process BAM file orefem1.chr.bam...                                        ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 20486939                                             ||
+||    Successfully assigned alignments : 8646521 (42.2%)                      ||
+||    Running time : 0.03 minutes                                             ||
+||                                                                            ||
+|| Process BAM file orefem2.chr.bam...                                        ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 16790209                                             ||
+||    Successfully assigned alignments : 6750993 (40.2%)                      ||
+||    Running time : 0.03 minutes                                             ||
+||                                                                            ||
+|| Process BAM file oremale1.chr.bam...                                       ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 25636529                                             ||
+||    Successfully assigned alignments : 11562356 (45.1%)                     ||
+||    Running time : 0.04 minutes                                             ||
+||                                                                            ||
+|| Process BAM file oremale2.chr.bam...                                       ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 23067369                                             ||
+||    Successfully assigned alignments : 10120173 (43.9%)                     ||
+||    Running time : 0.04 minutes                                             ||
+||                                                                            ||
+|| Write the final count table.                                               ||
+|| Write the read assignment summary.                                         ||
+||                                                                            ||
+|| Summary of counting results can be found in file "featureCounts/txt/featu  ||
+|| reCounts.chd1.rnaseq.chr.txt.summary"                                      ||
+||                                                                            ||
+\\============================================================================//
+

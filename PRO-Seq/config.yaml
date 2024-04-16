@@ -1,0 +1,11 @@
+samples:
+  auxin1: data/samples/SRR15904238.fastq
+  auxin2: data/samples/SRR15904240.fastq
+  control1: data/samples/SRR15904237.fastq
+  control2: data/samples/SRR15904239.fastq
+
+reference:
+  fa-chr: data/reference/dmel-all-chromosome-r6.55.fasta
+  gtf: data/reference/dmel-all-r6.55.gtf
+
+

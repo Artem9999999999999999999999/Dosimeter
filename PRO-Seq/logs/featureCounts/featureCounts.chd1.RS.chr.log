@@ -1,0 +1,79 @@
+
+        ==========     _____ _    _ ____  _____  ______          _____  
+        =====         / ____| |  | |  _ \|  __ \|  ____|   /\   |  __ \ 
+          =====      | (___ | |  | | |_) | |__) | |__     /  \  | |  | |
+            ====      \___ \| |  | |  _ <|  _  /|  __|   / /\ \ | |  | |
+              ====    ____) | |__| | |_) | | \ \| |____ / ____ \| |__| |
+        ==========   |_____/ \____/|____/|_|  \_\______/_/    \_\_____/
+	  v2.0.6
+
+//========================== featureCounts setting ===========================\\
+||                                                                            ||
+||             Input files : 4 BAM files                                      ||
+||                                                                            ||
+||                           auxin1.chr.bam                                   ||
+||                           auxin2.chr.bam                                   ||
+||                           control1.chr.bam                                 ||
+||                           control2.chr.bam                                 ||
+||                                                                            ||
+||             Output file : featureCounts.chd1.RS.chr.txt                    ||
+||                 Summary : featureCounts.chd1.RS.chr.txt.summary            ||
+||              Paired-end : no                                               ||
+||        Count read pairs : no                                               ||
+||              Annotation : dmel-all-r6.55.gtf (GTF)                         ||
+||      Dir for temp files : featureCounts/txt                                ||
+||      Assignment details : <input_file>.featureCounts                       ||
+||                      (Note that files are saved to the output directory)   ||
+||                                                                            ||
+||                                                                            ||
+||                 Threads : 8                                                ||
+||                   Level : meta-feature level                               ||
+||      Multimapping reads : not counted                                      ||
+|| Multi-overlapping reads : not counted                                      ||
+||   Min overlapping bases : 1                                                ||
+||                                                                            ||
+\\============================================================================//
+
+//================================= Running ==================================\\
+||                                                                            ||
+|| Load annotation file dmel-all-r6.55.gtf ...                                ||
+||    Features : 190039                                                       ||
+||    Meta-features : 17610                                                   ||
+||    Chromosomes/contigs : 25                                                ||
+||                                                                            ||
+|| Process BAM file auxin1.chr.bam...                                         ||
+||    Strand specific : reversely stranded                                    ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 54624101                                             ||
+||    Successfully assigned alignments : 15150905 (27.7%)                     ||
+||    Running time : 0.33 minutes                                             ||
+||                                                                            ||
+|| Process BAM file auxin2.chr.bam...                                         ||
+||    Strand specific : reversely stranded                                    ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 57902481                                             ||
+||    Successfully assigned alignments : 16256646 (28.1%)                     ||
+||    Running time : 0.33 minutes                                             ||
+||                                                                            ||
+|| Process BAM file control1.chr.bam...                                       ||
+||    Strand specific : reversely stranded                                    ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 51085903                                             ||
+||    Successfully assigned alignments : 15028164 (29.4%)                     ||
+||    Running time : 0.30 minutes                                             ||
+||                                                                            ||
+|| Process BAM file control2.chr.bam...                                       ||
+||    Strand specific : reversely stranded                                    ||
+||    Single-end reads are included.                                          ||
+||    Total alignments : 55136329                                             ||
+||    Successfully assigned alignments : 16268625 (29.5%)                     ||
+||    Running time : 0.30 minutes                                             ||
+||                                                                            ||
+|| Write the final count table.                                               ||
+|| Write the read assignment summary.                                         ||
+||                                                                            ||
+|| Summary of counting results can be found in file "featureCounts/txt/featu  ||
+|| reCounts.chd1.RS.chr.txt.summary"                                          ||
+||                                                                            ||
+\\============================================================================//
+

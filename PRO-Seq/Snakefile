@@ -1,0 +1,81 @@
+configfile: "config.yaml"
+
+rule all:
+    input:
+        "featureCounts/txt/featureCounts.chd1.RS.chr.txt",
+
+rule fastp:
+    input:
+        lambda wildcards: config["samples"][wildcards.sample]
+    output:
+        trimmed_fq = protected("data/trimmed_samples/{sample}_trimmed.fq"),
+        logs_html = "logs/fastp/html/{sample}.html",
+        logs_json = "logs/fastp/json/{sample}.json"
+    log:
+        "logs/fastp/{sample}.log"
+    threads: 6
+    shell:
+        """
+        (fastp -i {input} -o {output.trimmed_fq} -q 20 -5 -3 --length_required 10 -h {output.logs_html} -j {output.logs_json}) 2> {log}
+        """
+
+
+rule bowtie2_build_index:
+    input:
+        fa_chr    = config["reference"]["fa-chr"]
+    output:
+        chr_index    = expand("data/index_bowtie2/genome_index_bowtie2/genome-index.{ext}", ext=["1.bt2", "2.bt2", "3.bt2", "4.bt2", "rev.1.bt2", "rev.2.bt2"])
+    params:
+        basename_chr    = "data/index_bowtie2/genome_index_bowtie2/genome-index"
+    log:
+        log_chr    = "logs/bowtie2/build_index/genome-index.log"
+    threads: 6
+    shell:
+        """
+        (bowtie2-build {input.fa_chr}    {params.basename_chr})    2> {log.log_chr}
+        """
+
+
+rule bowtie2_map:
+    input:
+        "data/trimmed_samples/{sample}_trimmed.fq"
+    output:
+        chr    = "mapped_reads_bw2/chr/sam/{sample}.chr.sam"
+    log:
+        chr    = "logs/bowtie2/map/{sample}_map.chr.log"
+    params:
+        basename_chr    = "data/index_bowtie2/genome_index_bowtie2/genome-index"
+    threads: 6
+    shell:
+        """
+        (bowtie2 -x {params.basename_chr}    -U {input} -S {output.chr}    -k 5 --local) 2> {log.chr}
+        """
+
+
+rule bowtie2_sort:
+    input:
+        chr    = "mapped_reads_bw2/chr/sam/{sample}.chr.sam"
+    output:
+        chr    = "mapped_reads_bw2/chr/bam/{sample}.chr.bam"
+    log:
+        chr    = "logs/bowtie2/sort/{sample}_sort.chr.log"
+    threads: 3
+    shell:
+        """
+        (samtools view -bS {input.chr}    | samtools sort -o {output.chr})    2> {log.chr}
+        """
+
+rule featureCounts:
+    input:
+        config["reference"]["gtf"]
+    output:
+        chr    = "featureCounts/txt/featureCounts.chd1.RS.chr.txt"
+    log:
+        chr    = "logs/featureCounts/featureCounts.chd1.RS.chr.log"
+    params:
+        chr    = "mapped_reads_bw2/chr/bam/*bam"
+    threads: 8
+    shell:
+        """
+        (featureCounts -T 8 -s 2 -a {input} -o {output.chr}    {params.chr})    2> {log.chr}
+        """
