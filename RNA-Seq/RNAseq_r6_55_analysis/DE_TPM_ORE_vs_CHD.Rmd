@@ -1,0 +1,757 @@
+---
+title: "TPM analysis Alarm"
+author: "ManasyanAL"
+date: "02 09 2023"
+output: html_document
+---
+
+```{r echo = F, results = 'hide'}
+library(DESeq2)
+library(ggplot2)
+library(RColorBrewer)
+library(pheatmap)
+library(EnhancedVolcano)
+library(ape)
+library(dplyr)
+library(GenomicRanges)
+library(stringi)
+library(data.table)
+library(openxlsx)
+```
+
+## Loading dataset
+
+```{r}
+Counts <- read.delim("data_RNAseq_r6_55_hisat2/featureCounts.chd1.rnaseq.chr.csv", header = TRUE, row.names = 1, sep = ",")
+Counts <- Counts[which(rowSums(Counts) > 10),]
+Counts
+```
+
+```{r}
+Counts_fem <- read.delim("data_RNAseq_r6_55_hisat2/featureCounts.chd1.rnaseq.chr.fem.csv", header = TRUE, row.names = 1, sep = ",")
+Counts_fem <- Counts_fem[which(rowSums(Counts_fem) > 10),]
+
+Counts_male <- read.delim("data_RNAseq_r6_55_hisat2/featureCounts.chd1.rnaseq.chr.male.csv", header = TRUE, row.names = 1, sep = ",")
+Counts_male <- Counts_male[which(rowSums(Counts_male) > 10),]
+
+head(Counts_fem, 10)
+head(Counts_male, 10)
+```
+
+## Remove genes with null expression
+
+```{r}
+head(Counts, 10)
+dim(Counts)
+```
+
+## Creating DESeqDataSet Objects
+```{r}
+condition_all <- factor(c( "Fem", "Fem", "Male", "Male", "Fem", "Fem","Male", "Male"))
+type <- factor(c("CHD", "CHD", "CHD", "CHD", "ORE", "ORE", "ORE", "ORE"))
+coldata <- data.frame(row.names = colnames(Counts), condition_all = condition_all, type = type)
+coldata
+```
+
+```{r}
+condition <- factor(c("mut", "mut", "ctrl", "ctrl"))
+coldata_fem <- data.frame(row.names = colnames(Counts_fem), condition = condition)
+coldata_fem
+```
+
+```{r}
+condition <- factor(c("mut", "mut", "ctrl", "ctrl"))
+coldata_male <- data.frame(row.names = colnames(Counts_male), condition = condition)
+coldata_male
+```
+
+```{r}
+# Создание объекта DESeqDataSet
+dds <- DESeqDataSetFromMatrix(countData = Counts,
+                              colData = coldata,
+                              design = ~1+condition_all+type)
+
+dds_fem <- DESeqDataSetFromMatrix(countData = Counts_fem,
+                              colData = coldata_fem,
+                              design = ~1+condition)
+
+dds_male <- DESeqDataSetFromMatrix(countData = Counts_male,
+                              colData = coldata_male,
+                              design = ~1+condition)
+```
+
+## DE analysis
+```{r}
+dds <- DESeq(dds)
+dds_fem <- DESeq(dds_fem)
+dds_male <- DESeq(dds_male)
+```
+
+## PCA plot
+```{r}
+rld <- rlog(dds)
+
+# Построение графика PCA с разделением по condition и type
+pca_data <- plotPCA(rld, intgroup = c("condition_all", "type"), returnData = TRUE)
+
+ggplot(pca_data, aes(x = PC1, y = PC2, color = condition_all, shape = type)) +
+  geom_point(size = 4) +
+  labs(title = "PCA plot for S2 and CHD1") +
+  xlab(paste0("PC1: ", round(100 * pca_data$percentVar[1], 1), "% variance")) +
+  ylab(paste0("PC2: ", round(100 * pca_data$percentVar[2], 1), "% variance")) +
+  scale_x_continuous(name = "PC1", labels = scales::percent_format(scale = 1)) +
+  scale_y_continuous(name = "PC2", labels = scales::percent_format(scale = 1)) +
+  ggtitle("PCA Plot") +
+  theme_minimal()
+
+rld_fem <- rlog(dds_fem)
+
+# Построение графика PCA с разделением по condition для CHD1
+pca_data_fem <- plotPCA(rld_fem, intgroup = c("condition"), returnData = TRUE)
+
+ggplot(pca_data_fem, aes(x = PC1, y = PC2, color = condition)) +
+  geom_point(size = 4) +
+  labs(title = "PCA plot for Chd1") +
+  xlab(paste0("PC1: ", round(100 * pca_data_fem$percentVar[1], 1), "% variance")) +
+  ylab(paste0("PC2: ", round(100 * pca_data_fem$percentVar[2], 1), "% variance")) +
+  scale_x_continuous(name = "PC1", labels = scales::percent_format(scale = 1)) +
+  scale_y_continuous(name = "PC2", labels = scales::percent_format(scale = 1)) +
+  ggtitle("PCA Plot") +
+  theme_minimal()
+
+rld_male <- rlog(dds_male)
+
+# Построение графика PCA с разделением по condition для S2
+pca_data_male <- plotPCA(rld_male, intgroup = c("condition"), returnData = TRUE)
+
+ggplot(pca_data_male, aes(x = PC1, y = PC2, color = condition)) +
+  geom_point(size = 4) +
+  labs(title = "PCA plot for S2") +
+  xlab(paste0("PC1: ", round(100 * pca_data_male$percentVar[1], 1), "% variance")) +
+  ylab(paste0("PC2: ", round(100 * pca_data_male$percentVar[2], 1), "% variance")) +
+  scale_x_continuous(name = "PC1", labels = scales::percent_format(scale = 1)) +
+  scale_y_continuous(name = "PC2", labels = scales::percent_format(scale = 1)) +
+  ggtitle("PCA Plot") +
+  theme_minimal()
+```
+
+```{r echo = T, results = 'hide'}
+# Сравнение Ctrl vs Auxin для CHD1
+res_fem <- results(dds_fem, contrast = c("condition","mut", "ctrl"))
+
+# Сравнение Ctrl vs Auxin для S2
+res_male <- results(dds_male, contrast = c("condition","mut", "ctrl"))
+```
+
+
+## Filter results by adjusting for pudge value and log2foldchange
+
+```{r}
+padj.cutoff <- 0.01
+```
+
+```{r}
+sig_res_fem <- res_fem[which(res_fem$padj < padj.cutoff), ]
+sig_res_male <- res_male[which(res_male$padj < padj.cutoff), ]
+```
+
+```{r}
+summary(sig_res_fem)
+summary(sig_res_male)
+```
+
+
+### MAplot
+
+```{r echo = F, results = 'hide'}
+fem_resLFC <- lfcShrink(dds_fem, coef = "condition_mut_vs_ctrl", type = "apeglm",
+                    lfcThreshold = 0.58)
+male_resLFC <- lfcShrink(dds_male, coef = "condition_mut_vs_ctrl", type = "apeglm",
+                    lfcThreshold = 0.58)
+```
+
+
+```{r}
+plotMA(fem_resLFC, ylim = c(-7, 7), main = "MA Plot for Female mut vs ctrl")
+plotMA(male_resLFC, ylim = c(-7, 7), main = "MA Plot for Male mut vs ctrl")
+```
+
+
+
+# Annotation
+
+```{r}
+annotation_file <- "data_RNAseq_r6_55_hisat2/dmel-all-r6.55.gtf.gz"
+annotation <- read.gff(annotation_file, na.strings = c(".", "?"), GFF3 = FALSE)
+```
+
+```{r}
+head(annotation, 10)
+dim(annotation)
+```
+
+```{r}
+annotation_filter <- annotation %>%
+  filter(feature == "gene") %>%
+  dplyr::select(c(1, 3, 7, 9)) %>% 
+  setNames(c("chr", "feature", "strand", "attr")) %>% 
+  mutate(id = sub('.*gene_id "([^"]+)".*', '\\1', attr), gene_name = sub('.*gene_symbol "([^"]+)".*', '\\1', attr), chr = paste0("chr", chr)) %>% 
+  dplyr::select(-attr)
+```
+
+```{r}
+head(annotation_filter, 10)
+dim(annotation_filter)
+```
+
+```{r}
+Counts_CHD1_fem.df <- as.data.frame(sig_res_fem) %>% mutate(id = rownames(sig_res_fem))
+Counts_CHD1_male.df <- as.data.frame(sig_res_male) %>% mutate(id = rownames(sig_res_male))
+```
+
+
+```{r}
+Counts_CHD1_fem.df <- merge(select(annotation_filter, id, chr, strand, gene_name), Counts_CHD1_fem.df, by = "id", all.y = T)
+unique(Counts_CHD1_fem.df$chr)
+head(Counts_CHD1_fem.df, 10)
+
+Counts_CHD1_male.df <- merge(select(annotation_filter, id, chr, strand, gene_name), Counts_CHD1_male.df, by = "id", all.y = T)
+unique(Counts_CHD1_male.df$chr)
+head(Counts_CHD1_male.df, 10)
+```
+
+```{r}
+file_path_CHD1_fem <- "results_r6.55/diff_expr_CHD1(r6.55)_fem.csv"
+file_path_CHD1_male <- "results_r6.55/diff_expr_CHD1(r6.55)_male.csv"
+write.csv(Counts_CHD1_fem.df, file = file_path_CHD1_fem, row.names = T)
+write.csv(Counts_CHD1_male.df, file = file_path_CHD1_male, row.names = T)
+```
+
+
+### TPM integral analisys
+
+```{r}
+annotation_file <- "data_RNAseq_r6_55_hisat2/dmel-all-r6.55.gtf.gz"
+annotation <- read.gff(annotation_file, na.strings = c(".", "?"), GFF3 = FALSE)
+```
+
+```{r}
+head(annotation, 100)
+dim(annotation)
+```
+
+```{r}
+annotation_filter_IA <- annotation %>%
+  filter(feature == "gene") %>%
+  dplyr::select(c(1, 3, 4, 5, 9)) %>% 
+  setNames(c("chr", "feature", "start", "end", "attr")) %>% 
+  mutate(id = sub('.*gene_id "([^"]+)".*', '\\1', attr), chr = paste0("chr", chr)) %>% 
+  dplyr::select(-attr) %>%
+  mutate(Lengths = end - start)
+```
+
+```{r}
+calc.tpm <- function(data){
+  if(!("Lengths" %in% names(data))){
+    stop("Error: column name 'Lengths' not found in names(data)")
+  }
+  feature_length <- data[,"Lengths",drop=FALSE]
+  counts <- data[,!(names(data)=="Lengths"),drop=FALSE]
+
+  ##Calculate the RPK value
+  RPK <- matrix(0, nrow=dim(counts)[1], ncol=dim(counts)[2])
+
+  for(row in 1:dim(counts)[1]){
+    for(col in 1:dim(counts)[2]){
+      RPK[row,col] <- counts[row,col]/feature_length$Lengths[row]
+    }
+  }
+
+  ##Calculate the sums of each column and divide by 1000000
+  scale_factor <- colSums(RPK)/1000000
+
+  ##Now divide all values in each column by the scaling factor
+  TPM <- t(t(RPK)/scale_factor)
+  colnames(TPM) <- names(counts)
+  row.names(TPM) <- row.names(counts)
+  return(as.data.frame(TPM))
+}
+```
+
+#### ORE and CHD
+
+```{r}
+Counts_ORE <- Counts %>%
+  select(starts_with("ORE"))
+
+Counts_CHD <- Counts %>%
+  select(starts_with("CHD"))
+```
+
+```{r}
+head(Counts_ORE, 10)
+head(Counts_CHD, 10)
+```
+
+
+
+```{r}
+Counts_ORE.df <- as.data.frame(Counts_ORE) %>% mutate(id = rownames(Counts_ORE))
+Counts_CHD.df <- as.data.frame(Counts_CHD) %>% mutate(id = rownames(Counts_CHD))
+```
+
+```{r}
+Counts_ORE.df <- merge(select(annotation_filter_IA, id, chr, Lengths), Counts_ORE.df, by = "id", all.y = T)
+Counts_CHD.df <- merge(select(annotation_filter_IA, id, chr, Lengths), Counts_CHD.df, by = "id", all.y = T)
+head(Counts_ORE.df, 10)
+head(Counts_CHD.df, 10)
+```
+
+```{r}
+counts_subset_CHD <- Counts_CHD.df[, -c(1, 2)]
+Counts_CHD_tpm.df <- calc.tpm(counts_subset_CHD)
+
+counts_subset_ORE <- Counts_ORE.df[, -c(1, 2)]
+Counts_ORE_tpm.df <- calc.tpm(counts_subset_ORE)
+```
+
+```{r}
+first_two_columns_CHD <- Counts_CHD.df[, 1:2]
+Counts_CHD_tpm_combined.df <- cbind(first_two_columns_CHD, Counts_CHD_tpm.df)
+
+first_two_columns_ORE <- Counts_ORE.df[, 1:2]
+Counts_ORE_tpm_combined.df <- cbind(first_two_columns_ORE, Counts_ORE_tpm.df)
+
+head(Counts_CHD_tpm_combined.df, 10)
+head(Counts_ORE_tpm_combined.df, 10)
+```
+
+```{r}
+filtered_counts_CHD <- Counts_CHD_tpm_combined.df %>%
+  filter(CHD1male1 > 1, CHD1male2 > 1, CHD1fem1 > 1, CHD1fem2 > 1)
+
+filtered_counts_ORE <- Counts_ORE_tpm_combined.df %>%
+  filter(OREmale1 > 1, OREmale2 > 1, OREfem1 > 1, OREfem2 > 1)
+```
+
+```{r}
+filtred_counts_avg_CHD <- filtered_counts_CHD %>%
+  mutate(CHD_Male = (CHD1male1 + CHD1male2) / 2, 
+         CHD_Fem = (CHD1fem1 + CHD1fem2) / 2)
+
+filtred_counts_avg_ORE <- filtered_counts_ORE %>%
+  mutate(ORE_Male = (OREmale1 + OREmale2) / 2, 
+         ORE_Fem = (OREfem1 + OREfem2) / 2)
+
+
+head(filtred_counts_avg_CHD, 10)
+head(filtred_counts_avg_ORE, 10)
+```
+
+```{r}
+filtred_counts_avg_CHD <- filtred_counts_avg_CHD %>%
+  mutate(log2FC = log2(CHD_Male / CHD_Fem))
+
+filtred_counts_avg_ORE <- filtred_counts_avg_ORE %>%
+  mutate(log2FC = log2(ORE_Male / ORE_Fem))
+
+head(filtred_counts_avg_CHD, 10)
+head(filtred_counts_avg_ORE, 10)
+```
+
+```{r}
+unique(filtred_counts_avg_CHD$chr)
+unique(filtred_counts_avg_ORE$chr)
+```
+
+
+
+```{r}
+filtred_counts_avg_CHD <- subset(filtred_counts_avg_CHD, !(chr %in% c("chrY", "chrmitochondrion_genome", "chrrDNA")))
+filtred_counts_avg_CHD$group <- ifelse(filtred_counts_avg_CHD$chr == "chrX", "chrX", "Autosome")
+
+filtred_counts_avg_ORE <- subset(filtred_counts_avg_ORE, !(chr %in% c("chrY", "chrmitochondrion_genome", "chrrDNA")))
+filtred_counts_avg_ORE$group <- ifelse(filtred_counts_avg_ORE$chr == "chrX", "chrX", "Autosome")
+
+unique(filtred_counts_avg_CHD$chr)
+unique(filtred_counts_avg_ORE$chr)
+```
+
+```{r}
+color_palette <- c("#92c5de", "#f4a582")
+
+ggplot(filtred_counts_avg_CHD, aes(x = group, y = log2FC, fill = group)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of log2FoldChange for TPM CHD Male vs Fem", x = "Group", y = "log2FoldChange") +
+  scale_fill_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  ylim(-1, 1)
+
+
+ggplot(filtred_counts_avg_ORE, aes(x = group, y = log2FC, fill = group)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of log2FoldChange for TPM ORE Male vs Fem", x = "Group", y = "log2FoldChange") +
+  scale_fill_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  ylim(-1, 1)
+```
+
+```{r}
+ggplot(filtred_counts_avg_CHD, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM CHD Male vs Fem", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  xlim(-1, 1)
+
+ggplot(filtred_counts_avg_ORE, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM ORE Male vs Fem", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  xlim(-1, 1)
+```
+
+```{r}
+# Выполняем t-тест
+t_test_result_CHD <- t.test(log2FC ~ group, data = filtred_counts_avg_CHD)
+t_test_result_ORE <- t.test(log2FC ~ group, data = filtred_counts_avg_ORE)
+
+# Выводим результаты t-теста
+print("T-Test CHD Male vs Fem:")
+print(t_test_result_CHD)
+print("T-Test ORE Male vs Fem:")
+print(t_test_result_ORE)
+
+
+# Выполняем ранговый тест Манна-Уитни
+wilcox_test_result_CHD <- wilcox.test(log2FC ~ group, data = filtred_counts_avg_CHD)
+wilcox_test_result_ORE <- wilcox.test(log2FC ~ group, data = filtred_counts_avg_ORE)
+
+# Выводим результаты рангового теста Манна-Уитни
+print("Mann-Whitney U Test CHD Male vs Fem:")
+print(wilcox_test_result_CHD)
+print("Mann-Whitney U Test ORE Male vs Fem:")
+print(wilcox_test_result_ORE)
+
+medians_CHD <- with(filtred_counts_avg_CHD, tapply(log2FC, group, median))
+medians_ORE <- with(filtred_counts_avg_ORE, tapply(log2FC, group, median))
+
+# Выводим медианы
+cat("\nMedians CHD Male vs Fem:\n")
+print(medians_CHD)
+cat("\nMedians ORE Male vs Fem:\n")
+print(medians_ORE)
+```
+
+#### Female and Male
+
+```{r}
+Counts_fem.df <- as.data.frame(Counts_fem) %>% mutate(id = rownames(Counts_fem))
+Counts_male.df <- as.data.frame(Counts_male) %>% mutate(id = rownames(Counts_male))
+```
+
+```{r}
+Counts_fem.df <- merge(select(annotation_filter_IA, id, chr, Lengths), Counts_fem.df, by = "id", all.y = T)
+Counts_male.df <- merge(select(annotation_filter_IA, id, chr, Lengths), Counts_male.df, by = "id", all.y = T)
+head(Counts_fem.df, 10)
+head(Counts_male.df, 10)
+```
+
+```{r}
+counts_subset_fem <- Counts_fem.df[, -c(1, 2)]
+Counts_fem_tpm.df <- calc.tpm(counts_subset_fem)
+
+counts_subset_male <- Counts_male.df[, -c(1, 2)]
+Counts_male_tpm.df <- calc.tpm(counts_subset_male)
+```
+
+```{r}
+first_two_columns_fem <- Counts_fem.df[, 1:2]
+Counts_fem_tpm_combined.df <- cbind(first_two_columns_fem, Counts_fem_tpm.df)
+
+first_two_columns_male <- Counts_male.df[, 1:2]
+Counts_male_tpm_combined.df <- cbind(first_two_columns_male, Counts_male_tpm.df)
+
+head(Counts_fem_tpm_combined.df, 10)
+head(Counts_male_tpm_combined.df, 10)
+```
+
+```{r}
+filtered_counts_fem <- Counts_fem_tpm_combined.df %>%
+  filter(OREfem1 > 1, CHD1fem1 > 1, OREfem2 > 1, CHD1fem2 > 1)
+
+filtered_counts_male <- Counts_male_tpm_combined.df %>%
+  filter(OREmale1 > 1, CHD1male1 > 1, OREmale2 > 1, CHD1male2 > 1)
+```
+
+```{r}
+filtred_counts_avg_fem <- filtered_counts_fem %>%
+  mutate(CHD = (OREfem1 + OREfem2) / 2, 
+         ORE = (CHD1fem1 + CHD1fem2) / 2)
+
+filtred_counts_avg_male <- filtered_counts_male %>%
+  mutate(CHD = (OREmale1 + OREmale2) / 2, 
+         ORE = (CHD1male1 + CHD1male2) / 2)
+
+
+head(filtred_counts_avg_fem, 10)
+head(filtred_counts_avg_male, 10)
+```
+
+```{r}
+filtred_counts_avg_fem <- filtred_counts_avg_fem %>%
+  mutate(log2FC = log2(CHD / ORE))
+
+filtred_counts_avg_male <- filtred_counts_avg_male %>%
+  mutate(log2FC = log2(CHD / ORE))
+
+head(filtred_counts_avg_fem, 10)
+head(filtred_counts_avg_male, 10)
+```
+
+```{r}
+unique(filtred_counts_avg_fem$chr)
+unique(filtred_counts_avg_male$chr)
+```
+
+
+
+```{r}
+filtred_counts_avg_fem <- subset(filtred_counts_avg_fem, !(chr %in% c("chrY", "chrmitochondrion_genome", "chrrDNA")))
+filtred_counts_avg_fem$group <- ifelse(filtred_counts_avg_fem$chr == "chrX", "chrX", "Autosome")
+
+filtred_counts_avg_male <- subset(filtred_counts_avg_male, !(chr %in% c("chrY", "chrmitochondrion_genome", "chrrDNA")))
+filtred_counts_avg_male$group <- ifelse(filtred_counts_avg_male$chr == "chrX", "chrX", "Autosome")
+
+unique(filtred_counts_avg_fem$chr)
+unique(filtred_counts_avg_male$chr)
+```
+
+```{r}
+color_palette <- c("#92c5de", "#f4a582")
+
+ggplot(filtred_counts_avg_fem, aes(x = group, y = log2FC, fill = group)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of log2FoldChange for TPM Female CHDvsORE", x = "Group", y = "log2FoldChange") +
+  scale_fill_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  ylim(-1, 1)
+
+
+ggplot(filtred_counts_avg_male, aes(x = group, y = log2FC, fill = group)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of log2FoldChange for TPM Male CHDvsORE", x = "Group", y = "log2FoldChange") +
+  scale_fill_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  ylim(-1, 1)
+```
+
+```{r}
+med_fem <- filtred_counts_avg_fem %>%
+  group_by(group) %>%
+  summarize(median=median(log2FC))
+med_male <- filtred_counts_avg_male %>%
+  group_by(group) %>%
+  summarize(median=median(log2FC))
+
+
+ggplot(filtred_counts_avg_fem, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Female CHDvsORE", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = med_fem, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") +
+  theme_minimal() +
+  xlim(-1, 1.5)
+
+ggplot(filtred_counts_avg_male, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Male CHDvsORE", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = med_male, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") + 
+  theme_minimal() +
+  xlim(-1, 1.5)
+
+```
+
+```{r}
+# Выполняем t-тест
+t_test_result_fem <- t.test(log2FC ~ group, data = filtred_counts_avg_fem)
+t_test_result_male <- t.test(log2FC ~ group, data = filtred_counts_avg_male)
+
+# Выводим результаты t-теста
+print("T-Test Female CHDvsORE:")
+print(t_test_result_fem)
+print("T-Test Male CHDvsORE:")
+print(t_test_result_male)
+
+
+# Выполняем ранговый тест Манна-Уитни
+wilcox_test_result_fem <- wilcox.test(log2FC ~ group, data = filtred_counts_avg_fem)
+wilcox_test_result_male <- wilcox.test(log2FC ~ group, data = filtred_counts_avg_male)
+
+# Выводим результаты рангового теста Манна-Уитни
+print("Mann-Whitney U Test Female CHDvsORE:")
+print(wilcox_test_result_fem)
+print("Mann-Whitney U Test Male CHDvsORE:")
+print(wilcox_test_result_male)
+
+medians_fem <- with(filtred_counts_avg_fem, tapply(log2FC, group, median))
+medians_male <- with(filtred_counts_avg_male, tapply(log2FC, group, median))
+
+# Выводим медианы
+cat("\nMedians Female CHDvsORE:\n")
+print(medians_fem)
+cat("\nMedians Male CHDvsORE:\n")
+print(medians_male)
+```
+
+
+```{r}
+figures_folder <- "figures_r6.55"
+
+if (!file.exists(figures_folder)) {
+  dir.create(figures_folder)
+}
+
+boxplot_path_up <- file.path(figures_folder, "Boxplot_RNA-seq_TPM(r6.55)_fem.png")
+boxplot_path_down <- file.path(figures_folder, "Boxplot_RNA-seq_TPM(r6.55)_male.png")
+density_plot_path_up <- file.path(figures_folder, "Density_plot_RNA-seq_TPM(r6.55)_fem.png")
+density_plot_path_down <- file.path(figures_folder, "Density_plot_RNA-seq_TPM(r6.55)_male.png")
+
+
+png(boxplot_path_up)
+ggplot(filtred_counts_avg_fem, aes(x = group, y = log2FC, fill = group)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of log2FoldChange for TPM Female CHDvsORE", x = "Group", y = "log2FoldChange") +
+  scale_fill_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  ylim(-1, 1)
+dev.off()
+
+png(boxplot_path_down)
+ggplot(filtred_counts_avg_male, aes(x = group, y = log2FC, fill = group)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of log2FoldChange for TPM Male CHDvsORE", x = "Group", y = "log2FoldChange") +
+  scale_fill_manual(values = color_palette, name = "Group") +
+  theme_minimal() +
+  ylim(-1, 1)
+dev.off()
+
+png(density_plot_path_up)
+ggplot(filtred_counts_avg_fem, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Female CHDvsORE", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = med_fem, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") +
+  theme_minimal() +
+  xlim(-1, 1.5)
+dev.off()
+
+png(density_plot_path_down)
+ggplot(filtred_counts_avg_male, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Male CHDvsORE", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = med_male, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") + 
+  theme_minimal() +
+  xlim(-1, 1.5)
+dev.off()
+
+cat("Графики сохранены в папке:", figures_folder, "\n")
+```
+
+## Housekeeping
+
+
+### TPM rusults
+
+#### CHD1
+```{r}
+hk_genes <- read.xlsx("data_RNAseq_r6_55_hisat2/List_of_ubiquitous_genes.xlsx")
+```
+
+```{r}
+head(hk_genes, 10)
+```
+
+```{r}
+# Получаем совпадения между колонками FlyBase.ID и id
+matching_genes_tpm_fem <- intersect(hk_genes$FlyBase.ID, filtred_counts_avg_fem$id)
+length(matching_genes_tpm_fem)
+filtered_data_fem <- filtred_counts_avg_fem[filtred_counts_avg_fem$id %in% matching_genes_tpm_fem, ]
+```
+```{r}
+# Получаем совпадения между колонками FlyBase.ID и id
+matching_genes_tpm_male <- intersect(hk_genes$FlyBase.ID, filtred_counts_avg_male$id)
+length(matching_genes_tpm_male)
+filtered_data_male <- filtred_counts_avg_male[filtred_counts_avg_male$id %in% matching_genes_tpm_male, ]
+```
+
+
+```{r}
+fmed_fem <- filtered_data_fem %>%
+  group_by(group) %>%
+  summarize(median=median(log2FC))
+fmed_male <- filtered_data_male %>%
+  group_by(group) %>%
+  summarize(median=median(log2FC))
+
+
+ggplot(filtered_data_fem, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Female CHDvsORE (HK genes)", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = fmed_fem, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") +
+  theme_minimal() +
+  xlim(-1, 1.5)
+
+ggplot(filtered_data_male, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Male CHDvsORE (HK genes)", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = fmed_fem, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") +
+  theme_minimal() +
+  xlim(-1, 1.5)
+```
+
+```{r}
+figures_folder <- "figures_r6.55"
+
+if (!file.exists(figures_folder)) {
+  dir.create(figures_folder)
+}
+
+density_plot_path_tpm_fem <- file.path(figures_folder, "Density_plot_RNA-seq_TPM(r6.53)_fem_HK.png")
+density_plot_path_tpm_male <- file.path(figures_folder, "Density_plot_RNA-seq_TPM(r6.53)_male_HK.png")
+
+
+png(density_plot_path_tpm_fem )
+ggplot(filtered_data_fem, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Female CHDvsORE (HK genes)", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = fmed_fem, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") +
+  theme_minimal() +
+  xlim(-1, 1.5)
+dev.off()
+
+
+
+png(density_plot_path_tpm_male)
+ggplot(filtered_data_male, aes(x = log2FC, color = group)) +
+  geom_density(alpha = 0, size = 1) + 
+  labs(title = "Density Plot of log2FoldChange for TPM Male CHDvsORE (HK genes)", x = "log2FoldChange", y = "Density") +
+  scale_color_manual(values = color_palette, name = "Group") +
+  geom_vline(data = fmed_fem, aes(xintercept = median, color = group), size = 0.5, linetype = "dashed") +
+  theme_minimal() +
+  xlim(-1, 1.5)
+dev.off
+
+cat("Графики сохранены в папке:", figures_folder, "\n")
+```
+
+```
+
+
+
